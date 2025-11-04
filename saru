@@ -97,7 +97,7 @@ end)
 
 --// 2. NoClip TOGGLE (ON = walk through walls)
 Tab:CreateToggle({
-   Name = "NoClip (Phase Mode)",
+   Name = "NoClip",
    CurrentValue = false,
    Flag = "NoClip",
    Callback = function(v)
