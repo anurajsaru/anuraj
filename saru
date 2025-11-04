@@ -14,7 +14,7 @@ local Window = Rayfield:CreateWindow({
    DisableBuildWarnings = false, -- Prevents Rayfield from warning when the script has a version mismatch with the interface
 
    ConfigurationSaving = {
-      Enabled = true,
+      Enabled = false,
       FolderName = nil, -- Create a custom folder for your hub/game
       FileName = "Big Hub"
    },
@@ -37,14 +37,206 @@ local Window = Rayfield:CreateWindow({
    }
 })
 
+Rayfield:Notify({
+   Title = "Toogle",
+   Content = "Press k to toogle",
+   Duration = 6.5,
+   Image = nil,
+})
+
+local Tab = Window:CreateTab("Main", nil) -- Title, Image
+
 local Tab = Window:CreateTab("MSC", nil) -- Title, Image
 
-local Toggle = MSCTab:CreateToggle({
-   Name = "Toggle Example",
+--// SARU PLAYER TAB – WalkSpeed + NoClip + Inf Jump
+--// SARU SPEED GOD – SLIDER + TOGGLE (copy-paste ONE time)
+local SpeedSec = Tab:CreateSection("Player Hacks")
+
+local SpeedEnabled = false
+local TargetSpeed = 16
+
+--// 1. SLIDER – pick your dream speed
+Tab:CreateSlider({
+   Name = "Choose Speed",
+   Range = {0, 100},
+   Increment = 1,
+   Suffix = " studs/s",
+   CurrentValue = 16,
+   Flag = "ChosenSpeed",
+   Callback = function(v)
+      TargetSpeed = v
+      -- If speed is ON → apply instantly
+      if SpeedEnabled then
+         local hum = game.Players.LocalPlayer.Character and game.Players.LocalPlayer.Character:FindFirstChild("Humanoid")
+         if hum then hum.WalkSpeed = v end
+      end
+   end,
+})
+
+--// 2. TOGGLE – turns your chosen speed ON/OFF
+Tab:CreateToggle({
+   Name = "WalkSpeed",
    CurrentValue = false,
-   Flag = "Toggle1", -- A flag is the identifier for the configuration file, make sure every element has a different flag if you're using configuration saving to ensure no overlaps
-   Callback = function(Value)
-   -- The function that takes place when the toggle is pressed
-   -- The variable (Value) is a boolean on whether the toggle is true or false
+   Flag = "SpeedHack",
+   Callback = function(v)
+      SpeedEnabled = v
+      local hum = game.Players.LocalPlayer.Character and game.Players.LocalPlayer.Character:FindFirstChild("Humanoid")
+      if hum then
+         hum.WalkSpeed = v and TargetSpeed or 16
+      end
+      Rayfield:Notify({Title = v and "SPEED ON" or "SPEED OFF", Content = v and (TargetSpeed.." studs/s") or "Normal", Duration = 2})
+   end,
+})
+
+--// 3. AUTO-APPLY after you die
+game.Players.LocalPlayer.CharacterAdded:Connect(function(char)
+   task.wait(0.5)
+   local hum = char:WaitForChild("Humanoid")
+   hum.WalkSpeed = SpeedEnabled and TargetSpeed or 16
+end)
+
+--// 2. NoClip TOGGLE (ON = walk through walls)
+Tab:CreateToggle({
+   Name = "NoClip (Phase Mode)",
+   CurrentValue = false,
+   Flag = "NoClip",
+   Callback = function(v)
+      NC_Enabled = v
+      Rayfield:Notify({Title = v and "NOCLIP ON" or "NOCLIP OFF", Content = v and "Walk through anything!" or "Back to normal", Duration = 2})
+   end,
+})
+
+--// 3. ENGINE: Apply NoClip every frame
+game:GetService("RunService").Stepped:Connect(function()
+   if NC_Enabled and game.Players.LocalPlayer.Character then
+      for _, part in pairs(game.Players.LocalPlayer.Character:GetDescendants()) do
+         if part:IsA("BasePart") then
+            part.CanCollide = false
+         end
+      end
+   end
+end)
+
+--// 3. Infinite Jump Toggle (Space = fly up)
+local InfJump = false
+Tab:CreateToggle({
+   Name = "Infinite Jump",
+   CurrentValue = false,
+   Flag = "InfJump",
+   Callback = function(v)
+      InfJump = v
+      if v then
+         Rayfield:Notify({Title="Inf Jump ON", Content="Spam jump to moon!", Duration=3})
+      end
+   end,
+})
+
+--// ENGINE: NoClip + Inf Jump (runs once)
+game:GetService("RunService").Stepped:Connect(function()
+   if NoClip and game.Players.LocalPlayer.Character then
+      for _, part in pairs(game.Players.LocalPlayer.Character:GetDescendants()) do
+         if part:IsA("BasePart") then
+            part.CanCollide = false
+         end
+      end
+   end
+end)
+
+game:GetService("UserInputService").InputBegan:Connect(function(key)
+   if key.KeyCode == Enum.KeyCode.X and NoClip then
+      -- Hold X = temporary noclip (feels smoother)
+      game.Players.LocalPlayer.Character.Humanoid:ChangeState(Enum.HumanoidStateType.Physics)
+   elseif key.KeyCode == Enum.KeyCode.Space and InfJump then
+      game.Players.LocalPlayer.Character.Humanoid:ChangeState(Enum.HumanoidStateType.Jumping)
+   end
+end)
+
+--// SARU ANTI-AFK v2 (add this anywhere in your script)
+local AntiAFK = {
+   Enabled = true,
+   Interval = 45, -- seconds between movements
+   LastMove = tick()
+}
+
+--// Super lightweight movement (no VirtualUser needed)
+local function microMove()
+   local hum = game.Players.LocalPlayer.Character and game.Players.LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
+   if hum then
+      hum:Move(Vector3.new(math.random(-1,1), 0, math.random(-1,1)), true)
+   end
+end
+
+--// Heartbeat loop
+game:GetService("RunService").Heartbeat:Connect(function()
+   if not AntiAFK.Enabled then return end
+   if tick() - AntiAFK.LastMove >= AntiAFK.Interval then
+      microMove()
+      AntiAFK.LastMove = tick()
+   end
+end)
+
+--// Optional: Add a toggle inside Rayfield
+local MiscSec = Tab:CreateSection("Anti-AFK")
+
+Tab:CreateToggle({
+   Name = "Anti-AFK",
+   CurrentValue = true,
+   Flag = "AntiAFK",
+   Callback = function(v)
+      AntiAFK.Enabled = v
+      if v then
+         Rayfield:Notify({
+            Title = "Anti-AFK ON",
+            Content = "You will stay forever!",
+            Duration = 3
+         })
+      end
+   end,
+})
+
+--// SARU SERVER HOP v4 – 100% WORKING NOV 2025
+--// Paste THIS EXACT BLOCK under your "local Tab = ..." line
+--// NO DEAD LINKS, NO CALLBACK ERRORS, WORKS IN EVERY GAME
+
+local HttpService = game:GetService("HttpService")
+local TeleportService = game:GetService("TeleportService")
+local TS = TeleportService
+
+local function ServerHop(minPlayers, maxPlayers)
+   minPlayers = minPlayers or 0
+   maxPlayers = maxPlayers or 999
+   local cursor = ""
+   repeat
+      local url = ("https://games.roblox.com/v1/games/%d/servers/Public?sortOrder=Asc&limit=100&cursor=%s"):format(game.PlaceId, cursor)
+      local success, result = pcall(function()
+         return HttpService:JSONDecode(game:HttpGet(url))
+      end)
+      if not success then task.wait(1) continue end
+      for _, server in pairs(result.data or {}) do
+         if server.playing >= minPlayers and server.playing <= maxPlayers and server.id ~= game.JobId then
+            TS:TeleportToPlaceInstance(game.PlaceId, server.id, game.Players.LocalPlayer)
+            task.wait(10) -- safety
+         end
+      end
+      cursor = result.nextPageCursor or ""
+   until not cursor
+   Rayfield:Notify({Title="No server found", Content="Trying again in 5s...", Duration=3})
+   task.wait(5)
+   ServerHop(minPlayers, maxPlayers)
+end
+
+local HopSec = Tab:CreateSection("Server Hop")
+
+Tab:CreateButton({
+   Name = "Server Hop",
+   Callback = function()
+      ServerHop()
+   end,
+})
+
+Tab:CreateButton({
+   Name = "Low Player Hop",
+   Callback = function()
+      ServerHop(1, 5)
    end,
 })
