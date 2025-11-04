@@ -38,3 +38,23 @@ local Window = Rayfield:CreateWindow({
 })
 
 local Tab = Window:CreateTab("Tab Example", nil) -- Title, Image
+
+local AntiAFKEnabled = false
+
+-- Anti-AFK Toggle
+MSCTab:CreateToggle({
+    Name = "Anti-AFK",
+    CurrentValue = false,
+    Flag = "AntiAFK",
+    Callback = function(Value)
+        AntiAFKEnabled = Value
+    end
+})
+
+-- Anti-AFK logic
+player.Idled:Connect(function()
+    if AntiAFKEnabled then
+        VirtualUser:CaptureController()
+        VirtualUser:ClickButton2(Vector2.new())
+    end
+end)
