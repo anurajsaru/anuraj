@@ -37,7 +37,7 @@ local Window = Rayfield:CreateWindow({
    }
 })
 
-local Tab = Window:CreateTab("Tab Example", nil) -- Title, Image
+local Tab = Window:CreateTab("MSC", nil) -- Title, Image
 
 local AntiAFKEnabled = false
 
