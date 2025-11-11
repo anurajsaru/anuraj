@@ -1,3 +1,0 @@
-if game.PlaceId == 90462358603255 then
-    loadstring(game:HttpGet("https://raw.githubusercontent.com/anurajsaru/anuraj/refs/heads/main/saru"))()
-end
