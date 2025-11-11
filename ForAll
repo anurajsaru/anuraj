@@ -1,0 +1,219 @@
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
+
+local Window = Rayfield:CreateWindow({
+   Name = "Saru",
+   Icon = 0, -- Icon in Topbar. Can use Lucide Icons (string) or Roblox Image (number). 0 to use no icon (default).
+   LoadingTitle = "Rayfield Interface Suite",
+   LoadingSubtitle = "by Sirius",
+   ShowText = "Rayfield", -- for mobile users to unhide rayfield, change if you'd like
+   Theme = "Default", -- Check https://docs.sirius.menu/rayfield/configuration/themes
+
+   ToggleUIKeybind = "K", -- The keybind to toggle the UI visibility (string like "K" or Enum.KeyCode)
+
+   DisableRayfieldPrompts = false,
+   DisableBuildWarnings = false, -- Prevents Rayfield from warning when the script has a version mismatch with the interface
+
+   ConfigurationSaving = {
+      Enabled = false,
+      FolderName = nil, -- Create a custom folder for your hub/game
+      FileName = "Big Hub"
+   },
+
+   Discord = {
+      Enabled = false, -- Prompt the user to join your Discord server if their executor supports it
+      Invite = "noinvitelink", -- The Discord invite code, do not include discord.gg/. E.g. discord.gg/ ABCD would be ABCD
+      RememberJoins = true -- Set this to false to make them join the discord every time they load it up
+   },
+
+   KeySystem = false, -- Set this to true to use our key system
+   KeySettings = {
+      Title = "Untitled",
+      Subtitle = "Key System",
+      Note = "No method of obtaining the key is provided", -- Use this to tell the user how to get a key
+      FileName = "Key", -- It is recommended to use something unique as other scripts using Rayfield may overwrite your key file
+      SaveKey = true, -- The user's key will be saved, but if you change the key, they will be unable to use your script
+      GrabKeyFromSite = false, -- If this is true, set Key below to the RAW site you would like Rayfield to get the key from
+      Key = {"Hello"} -- List of keys that will be accepted by the system, can be RAW file links (pastebin, github etc) or simple strings ("hello","key22")
+   }
+})
+
+Rayfield:Notify({
+   Title = "Toogle",
+   Content = "Press k to toogle",
+   Duration = 6.5,
+   Image = nil,
+})
+
+local MSCTab = Window:CreateTab("MSC", nil) -- Title, Image
+
+--// SARU SPEED GOD v3 – 100% RESPAWN-PROOF (copy-paste ONE time)
+local SpeedSec = MSCTab:CreateSection("SPEED GOD")
+
+local SpeedEnabled = false
+local TargetSpeed = 16
+local player = game.Players.LocalPlayer
+
+--// 1. SLIDER – pick your dream speed
+MSCTab:CreateSlider({
+   Name = "Choose Speed",
+   Range = {0, 100},
+   Increment = 1,
+   Suffix = " studs/s",
+   CurrentValue = 16,
+   Flag = "ChosenSpeed",
+   Callback = function(v)
+      TargetSpeed = v
+      -- If speed is ON → apply instantly
+      if SpeedEnabled then
+         updateSpeed()
+      end
+   end,
+})
+
+--// 2. TOGGLE – turns your chosen speed ON/OFF
+MSCTab:CreateToggle({
+   Name = "Speed Hack",
+   CurrentValue = false,
+   Flag = "SpeedHack",
+   Callback = function(v)
+      SpeedEnabled = v
+      updateSpeed()
+      Rayfield:Notify({Title = v and "SPEED ON" or "SPEED OFF", Content = v and (TargetSpeed.." studs/s") or "Normal", Duration = 2})
+   end,
+})
+
+--// 3. FUNCTION: Set speed safely
+function updateSpeed()
+   local char = player.Character
+   if char then
+      local hum = char:FindFirstChildOfClass("Humanoid")
+      if hum then
+         hum.WalkSpeed = SpeedEnabled and TargetSpeed or 16
+      end
+   end
+end
+
+--// 4. EVERY FRAME: Force speed (beats game resets)
+game:GetService("RunService").Heartbeat:Connect(function()
+   if SpeedEnabled then
+      updateSpeed()
+   end
+end)
+
+--// 5. ON RESPAWN: Auto-apply
+player.CharacterAdded:Connect(function(char)
+   task.wait(0.1)  -- Tiny delay for full load
+   updateSpeed()
+end)
+
+--// 2. NoClip TOGGLE (ON = walk through walls)
+MSCTab:CreateToggle({
+   Name = "NoClip",
+   CurrentValue = false,
+   Flag = "NoClip",
+   Callback = function(v)
+      NC_Enabled = v
+      Rayfield:Notify({Title = v and "NOCLIP ON" or "NOCLIP OFF", Content = v and "Walk through anything!" or "Back to normal", Duration = 2})
+   end,
+})
+
+--// 3. ENGINE: Apply NoClip every frame
+game:GetService("RunService").Stepped:Connect(function()
+   if NC_Enabled and game.Players.LocalPlayer.Character then
+      for _, part in pairs(game.Players.LocalPlayer.Character:GetDescendants()) do
+         if part:IsA("BasePart") then
+            part.CanCollide = false
+         end
+      end
+   end
+end)
+
+--// 3. Infinite Jump Toggle (Space = fly up)
+local InfJump = false
+MSCTab:CreateToggle({
+   Name = "Infinite Jump",
+   CurrentValue = false,
+   Flag = "InfJump",
+   Callback = function(v)
+      InfJump = v
+      if v then
+         Rayfield:Notify({Title="Inf Jump ON", Content="Spam jump to moon!", Duration=3})
+      end
+   end,
+})
+
+--// ENGINE: Inf Jump (runs once)
+game:GetService("UserInputService").InputBegan:Connect(function(key)
+   if key.KeyCode == Enum.KeyCode.Space and InfJump then
+      game.Players.LocalPlayer.Character.Humanoid:ChangeState(Enum.HumanoidStateType.Jumping)
+   end
+end)
+
+--// SARU ANTI-AFK v5 – VIRTUALUSER (NEVER KICKED AGAIN)
+local AntiSec = MSCTab:CreateSection("ANTI-AFK")
+
+local VU = game:GetService("VirtualUser")
+local AntiEnabled = false
+
+MSCTab:CreateToggle({
+   Name = "Anti-AFK",
+   CurrentValue = true,
+   Flag = "AntiAFK",
+   Callback = function(v)
+      AntiEnabled = v
+      if v then
+         -- Start the magic
+         game.Players.LocalPlayer.Idled:Connect(function()
+            if AntiEnabled then
+               VU:CaptureController()
+               VU:ClickButton2(Vector2.new()) -- invisible right-click
+            end
+         end)
+      end
+   end,
+})
+
+--// SARU SERVER HOP v4 – 100% WORKING NOV 2025
+local HttpService = game:GetService("HttpService")
+local TeleportService = game:GetService("TeleportService")
+local TS = TeleportService
+
+local function ServerHop(minPlayers, maxPlayers)
+   minPlayers = minPlayers or 0
+   maxPlayers = maxPlayers or 999
+   local cursor = ""
+   repeat
+      local url = ("https://games.roblox.com/v1/games/%d/servers/Public?sortOrder=Asc&limit=100&cursor=%s"):format(game.PlaceId, cursor)
+      local success, result = pcall(function()
+         return HttpService:JSONDecode(game:HttpGet(url))
+      end)
+      if not success then task.wait(1) continue end
+      for _, server in pairs(result.data or {}) do
+         if server.playing >= minPlayers and server.playing <= maxPlayers and server.id ~= game.JobId then
+            TS:TeleportToPlaceInstance(game.PlaceId, server.id, game.Players.LocalPlayer)
+            task.wait(10) -- safety
+         end
+      end
+      cursor = result.nextPageCursor or ""
+   until not cursor
+   Rayfield:Notify({Title="No server found", Content="Trying again in 5s...", Duration=3})
+   task.wait(5)
+   ServerHop(minPlayers, maxPlayers)
+end
+
+local HopSec = MSCTab:CreateSection("Server Hop")
+
+MSCTab:CreateButton({
+   Name = "Server Hop",
+   Callback = function()
+      ServerHop()
+   end,
+})
+
+MSCTab:CreateButton({
+   Name = "Low Player Hop",
+   Callback = function()
+      ServerHop(1, 5)
+   end,
+})
