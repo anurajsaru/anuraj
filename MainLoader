@@ -1,5 +1,3 @@
 if game.PlaceId == 90462358603255 then
     loadstring(game:HttpGet("https://raw.githubusercontent.com/anurajsaru/anuraj/refs/heads/main/saru"))()
-elseif game.PlaceI == "nil" then
-    loadstring(game:HttpGet("https://raw.githubusercontent.com/anurajsaru/anuraj/refs/heads/main/ForAll"))()
 end
