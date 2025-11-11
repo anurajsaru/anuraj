@@ -1,3 +1,4 @@
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
 
 local Window = Rayfield:CreateWindow({
@@ -44,19 +45,190 @@ Rayfield:Notify({
    Image = nil,
 })
 
-local Tab = Window:CreateTab("Main", nil) -- Title, Image
+local MainTab = Window:CreateTab("Main", nil) -- Title, Image
 
-local Tab = Window:CreateTab("MSC", nil) -- Title, Image
+--// Services
+local Players = game:GetService("Players")
+local Workspace = game:GetService("Workspace")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
---// SARU PLAYER TAB – WalkSpeed + NoClip + Inf Jump
---// SARU SPEED GOD – SLIDER + TOGGLE (copy-paste ONE time)
-local SpeedSec = Tab:CreateSection("Player Hacks")
+local LocalPlayer = Players.LocalPlayer
+local MonstersFolder = Workspace:WaitForChild("Debris"):WaitForChild("Monsters")
+local ToServer = ReplicatedStorage:WaitForChild("Events"):WaitForChild("To_Server")
+
+--// State
+local attackEnabled = false
+local attackThread = nil
+local BaseDelay = 0.12
+local currentRootPart = nil
+
+--// Anti-detection random delay
+local function randomDelay(base)
+    local variance = base * 0.3
+    return base + math.random(-1000, 1000) / 1000 * variance
+end
+
+----------------------------------------------------------------
+--// RESPAWN-PROOF CHARACTER HANDLER
+----------------------------------------------------------------
+local function updateCharacter()
+    local character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
+    currentRootPart = character:WaitForChild("HumanoidRootPart")
+end
+
+-- Initial setup
+updateCharacter()
+
+-- Auto-update on respawn
+LocalPlayer.CharacterAdded:Connect(function()
+    updateCharacter()
+end)
+
+----------------------------------------------------------------
+--// NEAREST MONSTER ATTACK (always uses CURRENT position)
+----------------------------------------------------------------
+local function attackNearestMonster()
+    if not currentRootPart then return end
+    
+    local nearestMonster = nil
+    local shortestDistance = math.huge
+    
+    for _, monster in pairs(MonstersFolder:GetChildren()) do
+        local monsterRoot = monster:FindFirstChild("HumanoidRootPart") 
+                         or monster:FindFirstChild("Torso") 
+                         or monster:FindFirstChild("UpperTorso")
+        if monsterRoot then
+            local distance = (currentRootPart.Position - monsterRoot.Position).Magnitude
+            if distance < shortestDistance then
+                shortestDistance = distance
+                nearestMonster = monster
+            end
+        end
+    end
+    
+    if nearestMonster then
+        local id = nearestMonster:GetAttribute("Id")
+        if id then
+            local args = { { Id = id, Action = "_Mouse_Click" } }
+            ToServer:FireServer(unpack(args))
+            return true
+        end
+    end
+    return false
+end
+
+----------------------------------------------------------------
+--// MAIN ATTACK LOOP
+----------------------------------------------------------------
+local function startAttack()
+    attackThread = task.spawn(function()
+        while attackEnabled do
+            pcall(attackNearestMonster)
+            task.wait(randomDelay(BaseDelay))
+        end
+    end)
+end
+
+----------------------------------------------------------------
+--// RAYFIELD UI (TOGGLE ONLY)
+----------------------------------------------------------------
+MainTab:CreateToggle({
+    Name = "⚔️ Attack Nearest Monster",
+    CurrentValue = false,
+    Flag = "NearestAttack",
+    Callback = function(enabled)
+        attackEnabled = enabled
+        
+        if enabled then
+            startAttack()
+            Rayfield:Notify({
+                Title = "🔥 Nearest Attack ON",
+                Content = "Works anywhere + respawn-proof",
+                Duration = 3
+            })
+        else
+            if attackThread then
+                task.cancel(attackThread)
+                attackThread = nil
+            end
+            Rayfield:Notify({
+                Title = "⏹️ Nearest Attack OFF",
+                Duration = 2
+            })
+        end
+    end,
+})
+
+-- Delay Slider
+MainTab:CreateSlider({
+    Name = "Attack Delay (s)",
+    Range = {0.05, 1},
+    Increment = 0.01,
+    CurrentValue = BaseDelay,
+    Flag = "AttackDelay",
+    Callback = function(v) BaseDelay = v end,
+})
+
+local StarTab = Window:CreateTab("Stars", nil)
+
+-- // Dropdown: Choose which star to open
+local selectedStar = "Star_1" -- Default
+
+StarTab:CreateDropdown({
+   Name = "Select Star",
+   Options = {"Star_1", "Star_2", "Star_3", "Star_4", "Star_5", "Star_6", "Star_7", "Star_8", "Star_9", "Star_10", "Star_11", "Star_12", "Star_13", "Star_14", "Star_15", "Star_16", "Star_17", "Star_18", "Star_19", "Star_20", "Star_21", "Star_22", "Star_23", "Star_24", "Star_25", "Star_26", "Star_27"},
+   CurrentOption = {"Star_1"},
+   MultipleOptions = false,
+   Flag = "StarDropdown",
+   Callback = function(Options)
+      selectedStar = Options[1]
+      print("Selected Star:", selectedStar)
+   end,
+})
+
+-- // Toggle: Controls auto-opening
+local autoOpening = false
+
+StarTab:CreateToggle({
+   Name = "Auto Open Stars",
+   CurrentValue = false,
+   Flag = "AutoStarToggle",
+   Callback = function(Value)
+      autoOpening = Value
+      
+      if autoOpening then
+         print("Auto opening started for:", selectedStar)
+         task.spawn(function()
+            while autoOpening do
+               local args = {
+                  {
+                     Open_Amount = 5,
+                     Action = "_Stars",
+                     Name = selectedStar
+                  }
+               }
+
+               game:GetService("ReplicatedStorage"):WaitForChild("Events"):WaitForChild("To_Server"):FireServer(unpack(args))
+               task.wait(1) -- wait time between each FireServer; you can adjust this
+            end
+         end)
+      else
+         print("Auto opening stopped")
+      end
+   end,
+})
+
+local MSCTab = Window:CreateTab("MSC", nil) -- Title, Image
+
+--// SARU SPEED GOD v3 – 100% RESPAWN-PROOF (copy-paste ONE time)
+local SpeedSec = MSCTab:CreateSection("SPEED GOD")
 
 local SpeedEnabled = false
 local TargetSpeed = 16
+local player = game.Players.LocalPlayer
 
 --// 1. SLIDER – pick your dream speed
-Tab:CreateSlider({
+MSCTab:CreateSlider({
    Name = "Choose Speed",
    Range = {0, 100},
    Increment = 1,
@@ -67,36 +239,49 @@ Tab:CreateSlider({
       TargetSpeed = v
       -- If speed is ON → apply instantly
       if SpeedEnabled then
-         local hum = game.Players.LocalPlayer.Character and game.Players.LocalPlayer.Character:FindFirstChild("Humanoid")
-         if hum then hum.WalkSpeed = v end
+         updateSpeed()
       end
    end,
 })
 
 --// 2. TOGGLE – turns your chosen speed ON/OFF
-Tab:CreateToggle({
-   Name = "WalkSpeed",
+MSCTab:CreateToggle({
+   Name = "Speed Hack",
    CurrentValue = false,
    Flag = "SpeedHack",
    Callback = function(v)
       SpeedEnabled = v
-      local hum = game.Players.LocalPlayer.Character and game.Players.LocalPlayer.Character:FindFirstChild("Humanoid")
-      if hum then
-         hum.WalkSpeed = v and TargetSpeed or 16
-      end
+      updateSpeed()
       Rayfield:Notify({Title = v and "SPEED ON" or "SPEED OFF", Content = v and (TargetSpeed.." studs/s") or "Normal", Duration = 2})
    end,
 })
 
---// 3. AUTO-APPLY after you die
-game.Players.LocalPlayer.CharacterAdded:Connect(function(char)
-   task.wait(0.5)
-   local hum = char:WaitForChild("Humanoid")
-   hum.WalkSpeed = SpeedEnabled and TargetSpeed or 16
+--// 3. FUNCTION: Set speed safely
+function updateSpeed()
+   local char = player.Character
+   if char then
+      local hum = char:FindFirstChildOfClass("Humanoid")
+      if hum then
+         hum.WalkSpeed = SpeedEnabled and TargetSpeed or 16
+      end
+   end
+end
+
+--// 4. EVERY FRAME: Force speed (beats game resets)
+game:GetService("RunService").Heartbeat:Connect(function()
+   if SpeedEnabled then
+      updateSpeed()
+   end
+end)
+
+--// 5. ON RESPAWN: Auto-apply
+player.CharacterAdded:Connect(function(char)
+   task.wait(0.1)  -- Tiny delay for full load
+   updateSpeed()
 end)
 
 --// 2. NoClip TOGGLE (ON = walk through walls)
-Tab:CreateToggle({
+MSCTab:CreateToggle({
    Name = "NoClip",
    CurrentValue = false,
    Flag = "NoClip",
@@ -119,7 +304,7 @@ end)
 
 --// 3. Infinite Jump Toggle (Space = fly up)
 local InfJump = false
-Tab:CreateToggle({
+MSCTab:CreateToggle({
    Name = "Infinite Jump",
    CurrentValue = false,
    Flag = "InfJump",
@@ -131,73 +316,38 @@ Tab:CreateToggle({
    end,
 })
 
---// ENGINE: NoClip + Inf Jump (runs once)
-game:GetService("RunService").Stepped:Connect(function()
-   if NoClip and game.Players.LocalPlayer.Character then
-      for _, part in pairs(game.Players.LocalPlayer.Character:GetDescendants()) do
-         if part:IsA("BasePart") then
-            part.CanCollide = false
-         end
-      end
-   end
-end)
-
+--// ENGINE: Inf Jump (runs once)
 game:GetService("UserInputService").InputBegan:Connect(function(key)
-   if key.KeyCode == Enum.KeyCode.X and NoClip then
-      -- Hold X = temporary noclip (feels smoother)
-      game.Players.LocalPlayer.Character.Humanoid:ChangeState(Enum.HumanoidStateType.Physics)
-   elseif key.KeyCode == Enum.KeyCode.Space and InfJump then
+   if key.KeyCode == Enum.KeyCode.Space and InfJump then
       game.Players.LocalPlayer.Character.Humanoid:ChangeState(Enum.HumanoidStateType.Jumping)
    end
 end)
 
---// SARU ANTI-AFK v2 (add this anywhere in your script)
-local AntiAFK = {
-   Enabled = true,
-   Interval = 45, -- seconds between movements
-   LastMove = tick()
-}
+--// SARU ANTI-AFK v5 – VIRTUALUSER (NEVER KICKED AGAIN)
+local AntiSec = MSCTab:CreateSection("ANTI-AFK")
 
---// Super lightweight movement (no VirtualUser needed)
-local function microMove()
-   local hum = game.Players.LocalPlayer.Character and game.Players.LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
-   if hum then
-      hum:Move(Vector3.new(math.random(-1,1), 0, math.random(-1,1)), true)
-   end
-end
+local VU = game:GetService("VirtualUser")
+local AntiEnabled = false
 
---// Heartbeat loop
-game:GetService("RunService").Heartbeat:Connect(function()
-   if not AntiAFK.Enabled then return end
-   if tick() - AntiAFK.LastMove >= AntiAFK.Interval then
-      microMove()
-      AntiAFK.LastMove = tick()
-   end
-end)
-
---// Optional: Add a toggle inside Rayfield
-local MiscSec = Tab:CreateSection("Anti-AFK")
-
-Tab:CreateToggle({
+MSCTab:CreateToggle({
    Name = "Anti-AFK",
    CurrentValue = true,
    Flag = "AntiAFK",
    Callback = function(v)
-      AntiAFK.Enabled = v
+      AntiEnabled = v
       if v then
-         Rayfield:Notify({
-            Title = "Anti-AFK ON",
-            Content = "You will stay forever!",
-            Duration = 3
-         })
+         -- Start the magic
+         game.Players.LocalPlayer.Idled:Connect(function()
+            if AntiEnabled then
+               VU:CaptureController()
+               VU:ClickButton2(Vector2.new()) -- invisible right-click
+            end
+         end)
       end
    end,
 })
 
 --// SARU SERVER HOP v4 – 100% WORKING NOV 2025
---// Paste THIS EXACT BLOCK under your "local Tab = ..." line
---// NO DEAD LINKS, NO CALLBACK ERRORS, WORKS IN EVERY GAME
-
 local HttpService = game:GetService("HttpService")
 local TeleportService = game:GetService("TeleportService")
 local TS = TeleportService
@@ -225,16 +375,16 @@ local function ServerHop(minPlayers, maxPlayers)
    ServerHop(minPlayers, maxPlayers)
 end
 
-local HopSec = Tab:CreateSection("Server Hop")
+local HopSec = MSCTab:CreateSection("Server Hop")
 
-Tab:CreateButton({
+MSCTab:CreateButton({
    Name = "Server Hop",
    Callback = function()
       ServerHop()
    end,
 })
 
-Tab:CreateButton({
+MSCTab:CreateButton({
    Name = "Low Player Hop",
    Callback = function()
       ServerHop(1, 5)
