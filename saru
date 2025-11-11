@@ -45,6 +45,11 @@ Rayfield:Notify({
    Image = nil,
 })
 
+local Tab = Window:CreateTab("Test", nil)
+
+
+
+
 local MainTab = Window:CreateTab("Main", nil) -- Title, Image
 
 --// Services
