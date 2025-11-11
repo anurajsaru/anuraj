@@ -332,7 +332,7 @@ end)
 local AntiSec = MSCTab:CreateSection("ANTI-AFK")
 
 local VU = game:GetService("VirtualUser")
-local AntiEnabled = false
+local AntiEnabled = true
 
 MSCTab:CreateToggle({
    Name = "Anti-AFK",
